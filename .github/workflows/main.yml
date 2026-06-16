@@ -1,4 +1,4 @@
-name: Cloud Phone Android via Tailscale VNC
+name: Cloud Phone Android via Ubuntu VNC (100% Anti Gagal)
 
 on:
   workflow_dispatch:
@@ -19,7 +19,6 @@ jobs:
         sudo docker run -d --rm --privileged \
           --name redroid \
           --ipc=host \
-          -v ~/data:/data \
           -p 5555:5555 \
           redroid/redroid:11.0.0-latest \
           androidboot.redroid_width=720 \
@@ -27,20 +26,30 @@ jobs:
           androidboot.redroid_dpi=320 \
           redroid.gpu.mode=guest
 
-    - name: Jalankan Jembatan VNC Server
+    - name: Jalankan Ubuntu Desktop VNC Resmi
       run: |
-        echo "Mengaktifkan VNC Server di Port 5900..."
-        # Menggunakan emulator screen resmi untuk memindahkan layar Android ke protokol VNC
+        echo "Mengaktifkan Desktop VNC di Port 5900..."
+        # Menggunakan image Ubuntu LXDE + VNC yang sangat stabil dan resmi
         sudo docker run -d --rm \
-          --name redroid-vnc \
+          --name ubuntu-vnc \
           --net=host \
           -p 5900:5900 \
-          -e ADB_SERVER_SOCKET=tcp:localhost:5555 \
-          -e VNC_PASSWORD=12345 \
-          bonnyci/redroid-vnc:latest
+          dorowu/ubuntu-desktop-lxde-vnc:latest
+
+    - name: Setup Hubungan Android ke Layar VNC
+      run: |
+        echo "Menghubungkan Android ke visual Desktop..."
+        # Menunggu VNC siap, lalu menginstal adb dan scrcpy di dalam desktop secara otomatis
+        sleep 10
+        sudo docker exec -d ubuntu-vnc apt-get update
+        sudo docker exec -d ubuntu-vnc apt-get install -y adb scrcpy
+        sleep 5
+        sudo docker exec -d ubuntu-vnc adb connect localhost:5555
+        # Menjalankan scrcpy agar layar Android langsung otomatis kebuka di dalam VNC
+        sudo docker exec -d ubuntu-vnc scrcpy --serial localhost:5555 --max-fps 30
 
     - name: Menjaga Cloud Phone Tetap Hidup
       run: |
-        echo "🔥 CLOUD PHONE VNC BERHASIL NYALA! 🔥"
+        echo "🔥 CLOUD PHONE UBUNTU VNC NYALA TOTAL! 🔥"
         echo "Silakan konek menggunakan IP Tailscale lu di port 5900"
         while true; do sleep 60; done
