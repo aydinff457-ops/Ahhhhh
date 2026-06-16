@@ -1,0 +1,46 @@
+name: Cloud Phone Android via Tailscale VNC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android-cloud:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 
+
+    steps:
+    - name: Konek ke Jaringan Tailscale
+      run: |
+        curl -fsSL https://tailscale.com/install.sh | sh
+        sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }}
+
+    - name: Jalankan Android 11 (Redroid)
+      run: |
+        sudo docker run -d --rm --privileged \
+          --name redroid \
+          --ipc=host \
+          -v ~/data:/data \
+          -p 5555:5555 \
+          redroid/redroid:11.0.0-latest \
+          androidboot.redroid_width=720 \
+          androidboot.redroid_height=1280 \
+          androidboot.redroid_dpi=320 \
+          redroid.gpu.mode=guest
+
+    - name: Jalankan Jembatan VNC Server
+      run: |
+        echo "Mengaktifkan VNC Server di Port 5900..."
+        # Menggunakan emulator screen resmi untuk memindahkan layar Android ke protokol VNC
+        sudo docker run -d --rm \
+          --name redroid-vnc \
+          --net=host \
+          -p 5900:5900 \
+          -e ADB_SERVER_SOCKET=tcp:localhost:5555 \
+          -e VNC_PASSWORD=12345 \
+          bonnyci/redroid-vnc:latest
+
+    - name: Menjaga Cloud Phone Tetap Hidup
+      run: |
+        echo "🔥 CLOUD PHONE VNC BERHASIL NYALA! 🔥"
+        echo "Silakan konek menggunakan IP Tailscale lu di port 5900"
+        while true; do sleep 60; done
